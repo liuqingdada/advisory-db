@@ -2,7 +2,7 @@ name: Sync RustSec Advisory-DB to GitHub
 
 on:
   schedule:
-    - cron: '0 0 1 * *' # 每个月第一天触发
+    - cron: '0 0 1 * *' # 每个月第一天触发一次
   workflow_dispatch:
 
 jobs:
@@ -10,15 +10,27 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout current repository
         uses: actions/checkout@v4
-
-      - name: Pull upstream and exclude .github
-        uses: repo-sync/github-sync@v2
         with:
-          source_repo: 'https://github.com/rustsec/advisory-db.git'
-          source_branch: 'main'
-          destination_branch: 'main'
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          # 核心参数：同步时排除 .github 文件夹，保护你的 sync.yml
-          exclude: ".github/*"
+          fetch-depth: 0
+
+      - name: Configure Git Identity
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email '41898282+github-actions[bot]@users.noreply.github.com'
+
+      - name: Pull upstream and merge (preserving .github)
+        run: |
+          # 1. 添加上游仓库地址
+          git remote add upstream https://github.com/rustsec/advisory-db.git
+          git fetch upstream
+
+          # 2. 以合并的方式拉取上游 main 分支（允许不相关历史合并）
+          git merge upstream/main --allow-unrelated-histories --no-edit
+
+          # 3. 关键保护：强制用本地的 .github 覆盖掉合并进来的上游 .github（保护你的 sync.yml）
+          git checkout HEAD -- .github
+
+          # 4. 提交并推送到你的 GitHub 仓库
+          git push origin main
