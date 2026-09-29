@@ -2,7 +2,7 @@ name: Sync RustSec Advisory-DB to GitHub
 
 on:
   schedule:
-    - cron: '0 0 1 * *' # 每个月第一天触发一次
+    - cron: '0 0 * * 1' # 每周一的 00:00 触发一次
   workflow_dispatch:
 
 # 核心：必须显式声明允许写入仓库内容的权限
