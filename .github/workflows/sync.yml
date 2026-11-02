@@ -30,12 +30,21 @@ jobs:
           git remote add upstream https://github.com/rustsec/advisory-db.git
           git fetch upstream
 
-          # 2. 以合并的方式拉取上游 main 分支
-          git merge upstream/main --allow-unrelated-histories --no-edit
+          # 2. 合并上游 main 分支（--no-commit：先停住，处理完 .github 再提交）
+          git merge upstream/main --allow-unrelated-histories --no-edit --no-commit || true
 
-          # 3. 保护本地 .github 文件夹，防止被上游覆盖
-          git checkout HEAD -- .github
+          # 3. 以 HEAD 为准还原 .github：撤销上游对该目录的新增/修改/冲突
+          git rm -rq --cached .github 2>/dev/null || true
+          rm -rf .github
+          git checkout HEAD -- .github 2>/dev/null || true
 
-          # 4. 提交并推送到你的 GitHub 仓库（带上认证 Token）
+          # 4. 完成合并提交（Already up to date 时跳过）
+          if git rev-parse -q --verify MERGE_HEAD >/dev/null; then
+            git commit --no-edit
+          else
+            echo 'Already up to date, nothing to merge'
+          fi
+
+          # 5. 提交并推送到你的 GitHub 仓库（带上认证 Token）
           git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
           git push origin main
